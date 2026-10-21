@@ -1,0 +1,4 @@
+*.db
+*.log
+rejected*.csv
+__pycache__/

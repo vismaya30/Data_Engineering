@@ -1,0 +1,6 @@
+order_id,customer,product,quantity,price,order_date
+1,alice,Laptop,1,900.50,2026-01-05
+2,BOB,Mouse,2,25.00,2026-01-06
+3,carol,Keyboard,,45.00,2026-01-07
+4,alice,Monitor,1,200.00,2026-01-08
+5,dave,Mouse,3,25.00,not_a_date
