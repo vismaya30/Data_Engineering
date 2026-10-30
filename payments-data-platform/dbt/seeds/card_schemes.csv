@@ -1,0 +1,4 @@
+scheme_code,scheme_name,network_model
+VISA,Visa,four_party
+MASTERCARD,Mastercard,four_party
+AMEX,American Express,three_party

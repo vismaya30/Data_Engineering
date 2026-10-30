@@ -1,45 +1,50 @@
 # Architecture
 
-## Overview
-
-This is a daily batch pipeline built on a **medallion architecture** (bronze → silver → gold), orchestrated by Airflow.
-
 ## Layers
 
-| Layer | Location | Format | Content |
-|---|---|---|---|
-| Bronze | `s3://<bucket>/bronze/` | CSV / JSON | Raw files, as received |
-| Silver | `s3://<bucket>/silver/` | Parquet | Cleaned, typed, deduplicated |
-| Quarantine | `s3://<bucket>/quarantine/` | Parquet | Records that failed DQ checks, with reason |
-| Gold | `s3://<bucket>/gold/` | Parquet | Reconciled, business-ready data |
-| Warehouse | PostgreSQL (RDS) | Tables | Star schema built by dbt |
+| Layer | Location | Format | Partitioned by | Written by |
+|---|---|---|---|---|
+| Bronze | `bronze/<entity>/ingest_date=YYYY-MM-DD/` | JSON lines | ingest date | `src/generator/generate.py` |
+| Quarantine | `quarantine/<entity>/` | Parquet | `ingest_date` | `src/transforms/silver.py` |
+| Silver | `silver/transactions`, `silver/settlements`, `silver/merchants` | Parquet | `auth_date`, `settlement_date`, none | `src/transforms/silver.py` |
+| Gold | `gold/reconciliation` | Parquet | `business_date` | `src/transforms/reconciliation.py` |
+| Warehouse | PostgreSQL `raw` schema | tables | indexed by date | `src/transforms/load_warehouse.py` |
+| Marts | PostgreSQL `staging`, `marts`, `reference` schemas | views and tables | n/a | dbt |
 
-## Partitioning
+`DATA_ROOT` decides where the lake lives. Locally it is `./data`; on AWS it is something like `s3a://my-payments-lake`. The code paths are the same in both cases. When the root is on S3 the Spark session adds `hadoop-aws` and uses the default AWS credential chain.
 
-```
-s3://<bucket>/<layer>/<dataset>/ingest_date=YYYY-MM-DD/part-*.parquet
-```
+## Daily flow
 
-- Partitioning by `ingest_date` enables incremental processing and cheap backfills.
-- Datasets: `transactions`, `settlements`, `merchants`.
+The Airflow DAG `payments_daily` runs once per day with `catchup=True`, `max_active_runs=1` and `depends_on_past=True`, so days are always processed in order.
 
-## Daily DAG Flow
+1. **generate_bronze** writes three files for the run date: merchants (a full snapshot), the day's authorisations, and the settlement file that arrived that day. The settlement file contains settlements for authorisations from T-1, T-2 and T-3.
+2. **build_silver** reads only that day's bronze partition, trims and casts every field, drops exact duplicates by business key, runs the data quality rules, writes rejects to quarantine and the rest to silver.
+3. **reconcile** looks at the last `LATE_WINDOW_DAYS` days of approved authorisations and every settlement that arrived in the same window, and writes a status per transaction to gold.
+4. **load_warehouse** copies the affected silver and gold partitions into PostgreSQL inside a single transaction and moves the watermark forward.
+5. **dbt_build** runs seeds, staging views, marts and every dbt test.
 
-1. **generate_data**: creates the day's source files (simulating an upstream system)
-2. **ingest_bronze**: uploads the raw files to S3
-3. **transform_silver**: PySpark casts types, standardises currency and timestamps, and deduplicates on `transaction_id`
-4. **quality_gate**: runs the validation rules. Failed rows go to quarantine, and the task fails if the error rate exceeds a threshold
-5. **reconcile_gold**: matches authorisations to settlements (see `reconciliation.md`)
-6. **load_warehouse**: loads the gold data into PostgreSQL staging tables
-7. **dbt_run / dbt_test**: builds and tests the star schema
+## Idempotency
 
-## Reliability Patterns
+Every write replaces a whole partition rather than appending:
 
-| Pattern | Implementation |
-|---|---|
-| Idempotency | Each run overwrites its own `ingest_date` partition. Warehouse loads use delete-insert / upsert per date |
-| Incremental load | The watermark (last processed date) is stored in a control table, and only new partitions are processed |
-| Retries | Airflow `retries=3`, `retry_delay=5min` |
-| Backfill | `airflow dags backfill` over a date range, which is safe because runs are idempotent |
-| Late-arriving data | The reconciliation window looks back T-3 days for settlements |
-| Observability | Row counts and DQ results are logged per run to an `audit_log` table |
+- Bronze file names are fixed per day, so a rerun overwrites the same object.
+- Spark runs with `spark.sql.sources.partitionOverwriteMode=dynamic`, so `mode("overwrite")` only replaces the partitions present in the output.
+- The warehouse loader deletes the date range it is about to insert and does both in one transaction.
+- `fact_transactions` is an incremental dbt model using `delete+insert` on `transaction_id`.
+
+The generator is deterministic. Every random choice is seeded from the run date or the transaction id, so regenerating a day gives byte-identical files.
+
+## Incremental loading
+
+The loader keeps a watermark in `raw.load_watermark`. On each run it loads from `min(watermark + 1, run_date - LATE_WINDOW_DAYS)` up to the run date. That covers two cases:
+
+- If runs were missed, it catches up from the last loaded day.
+- Even on a normal run it reloads the last few days, because reconciliation statuses for those days can still change as late settlements arrive.
+
+The watermark only moves forward, so rerunning an old day does not rewind it.
+
+## Late-arriving data
+
+Settlements can land up to T+3. Gold is recomputed for the trailing window on every run, so a transaction can move from `PENDING` to `MATCHED`, `LATE` or `UNMATCHED` as more settlement files arrive. Once a business date is older than the window it stops changing.
+
+Reconciliation only considers settlements dated on or before the run date, so rerunning an old day reproduces the result it had at the time.

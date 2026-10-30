@@ -1,24 +1,6 @@
-# Core
-pyspark
-pandas
-faker
-boto3
-python-dotenv
-psycopg2-binary
-sqlalchemy
-
-# Data quality
-great-expectations
-
-# Modelling
-dbt-postgres
-
-# Dashboard
-streamlit
-plotly
-
-# Dev
-pytest
-ruff
-
-# Tip: once everything works, run `pip freeze > requirements.lock` to pin versions
+-r requirements-pipeline.txt
+dbt-core==1.8.9
+dbt-postgres==1.8.2
+streamlit==1.39.0
+SQLAlchemy==2.0.36
+plotly==5.24.1

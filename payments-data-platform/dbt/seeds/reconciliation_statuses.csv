@@ -1,0 +1,9 @@
+status,description,is_exception
+MATCHED,Settled once for the authorised amount within the expected window,false
+LATE,Settled once for the authorised amount but after the expected window,false
+AMOUNT_MISMATCH,Settled once for a different amount,true
+DUPLICATE,Settled more than once,true
+PENDING,Not settled yet and still inside the late-arrival window,false
+UNMATCHED,Not settled by the end of the late-arrival window,true
+ORPHAN_SETTLEMENT,Settlement with no matching authorisation,true
+NOT_APPLICABLE,Declined authorisation that is not expected to settle,false

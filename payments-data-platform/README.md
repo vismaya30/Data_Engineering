@@ -1,6 +1,8 @@
 # 💳 Payments Data Platform
 
-![CI](https://github.com/<your-username>/payments-data-platform/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/vismaya30/Data_Engineering/actions/workflows/payments-data-platform-ci.yml/badge.svg)
+
+Part of my [Data Engineering portfolio](https://github.com/vismaya30/Data_Engineering).
 
 This is an end-to-end batch data platform that ingests synthetic card-payment data, reconciles **authorisations against settlements**, enforces **data quality gates**, and serves analytics through a star-schema warehouse.
 
@@ -84,7 +86,6 @@ payments-data-platform/
 ├── dashboard/             # Streamlit app
 ├── tests/                 # pytest unit tests
 ├── docs/                  # Design documentation
-└── .github/workflows/     # CI pipeline
 ```
 
 ---
@@ -92,8 +93,8 @@ payments-data-platform/
 ## 🚀 Quickstart
 
 ```bash
-git clone https://github.com/<your-username>/payments-data-platform.git
-cd payments-data-platform
+git clone https://github.com/vismaya30/Data_Engineering.git
+cd Data_Engineering/payments-data-platform
 cp .env.example .env          # fill in your values
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
@@ -118,14 +119,14 @@ Full setup (AWS, Airflow, dbt) is in [docs/setup.md](docs/setup.md).
 
 ## 🗺️ Roadmap
 
-- [ ] Synthetic data generator
-- [ ] S3 bronze ingestion + Airflow DAG
-- [ ] PySpark silver layer (clean, dedup)
-- [ ] Data quality gate + quarantine
-- [ ] Reconciliation job (gold)
-- [ ] Load to PostgreSQL + dbt star schema
-- [ ] Streamlit dashboard
-- [ ] Unit tests + CI
+- [x] Synthetic data generator
+- [x] S3 bronze ingestion + Airflow DAG
+- [x] PySpark silver layer (clean, dedup)
+- [x] Data quality gate + quarantine
+- [x] Reconciliation job (gold)
+- [x] Load to PostgreSQL + dbt star schema
+- [x] Streamlit dashboard
+- [x] Unit tests + CI
 - [ ] *Stretch:* Kafka streaming ingestion
 - [ ] *Stretch:* Terraform for AWS resources
 
@@ -133,7 +134,7 @@ Full setup (AWS, Airflow, dbt) is in [docs/setup.md](docs/setup.md).
 
 ## 👤 Author
 
-**Vismaya** · [LinkedIn](https://linkedin.com/in/<your-profile>) · [GitHub](https://github.com/<your-username>)
+**Vismaya** · [LinkedIn](https://linkedin.com/in/<your-profile>) · [GitHub](https://github.com/vismaya30)
 
 ## 📄 License
 

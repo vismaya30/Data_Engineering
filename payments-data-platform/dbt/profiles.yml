@@ -1,0 +1,12 @@
+payments:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('PG_HOST', 'localhost') }}"
+      port: "{{ env_var('PG_PORT', '15432') | as_number }}"
+      user: "{{ env_var('PG_USER', 'payments') }}"
+      password: "{{ env_var('PG_PASSWORD', 'payments') }}"
+      dbname: "{{ env_var('PG_DATABASE', 'payments') }}"
+      schema: analytics
+      threads: 4

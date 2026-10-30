@@ -1,0 +1,44 @@
+version: 2
+
+models:
+  - name: stg_merchants
+    description: One row per merchant from the latest silver snapshot.
+    columns:
+      - name: merchant_id
+        data_tests: [unique, not_null]
+
+  - name: stg_transactions
+    description: Validated card authorisations, one row per transaction.
+    columns:
+      - name: transaction_id
+        data_tests: [unique, not_null]
+      - name: auth_status
+        data_tests:
+          - accepted_values:
+              values: ["APPROVED", "DECLINED"]
+      - name: amount
+        data_tests: [not_null]
+
+  - name: stg_settlements
+    description: Validated settlement records, one row per settlement.
+    columns:
+      - name: settlement_id
+        data_tests: [unique, not_null]
+      - name: transaction_id
+        data_tests: [not_null]
+
+  - name: stg_reconciliation
+    description: Reconciliation outcome per approved authorisation, plus orphan settlements.
+    columns:
+      - name: status
+        data_tests:
+          - not_null
+          - accepted_values:
+              values:
+                - MATCHED
+                - LATE
+                - AMOUNT_MISMATCH
+                - DUPLICATE
+                - PENDING
+                - UNMATCHED
+                - ORPHAN_SETTLEMENT

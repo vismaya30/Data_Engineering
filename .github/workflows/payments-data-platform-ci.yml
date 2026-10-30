@@ -1,0 +1,73 @@
+name: payments-data-platform-ci
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "payments-data-platform/**"
+      - ".github/workflows/payments-data-platform-ci.yml"
+  pull_request:
+    paths:
+      - "payments-data-platform/**"
+      - ".github/workflows/payments-data-platform-ci.yml"
+
+defaults:
+  run:
+    working-directory: payments-data-platform
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: payments-data-platform/requirements*.txt
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - run: pip install -r requirements-dev.txt
+      - run: ruff check .
+      - run: ruff format --check .
+      - run: pytest -q
+
+  dbt:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: payments
+          POSTGRES_USER: payments
+          POSTGRES_PASSWORD: payments
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U payments"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PG_HOST: localhost
+      PG_PORT: "5432"
+      PG_DATABASE: payments
+      PG_USER: payments
+      PG_PASSWORD: payments
+      PGPASSWORD: payments
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install dbt-core==1.8.9 dbt-postgres==1.8.2
+      - run: psql -h localhost -U payments -d payments -f sql/ddl.sql
+      - run: dbt build --profiles-dir .
+        working-directory: payments-data-platform/dbt

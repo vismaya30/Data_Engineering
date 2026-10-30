@@ -1,0 +1,83 @@
+version: 2
+
+models:
+  - name: dim_date
+    description: Calendar dimension keyed on yyyymmdd.
+    columns:
+      - name: date_key
+        data_tests: [unique, not_null]
+
+  - name: dim_merchant
+    description: Merchant attributes.
+    columns:
+      - name: merchant_id
+        data_tests: [unique, not_null]
+
+  - name: dim_card_scheme
+    columns:
+      - name: scheme_code
+        data_tests: [unique, not_null]
+
+  - name: dim_currency
+    columns:
+      - name: currency_code
+        data_tests: [unique, not_null]
+
+  - name: dim_reconciliation_status
+    columns:
+      - name: status
+        data_tests: [unique, not_null]
+
+  - name: fact_transactions
+    description: One row per authorisation with its reconciliation outcome.
+    columns:
+      - name: transaction_id
+        data_tests: [unique, not_null]
+      - name: date_key
+        data_tests:
+          - not_null
+          - relationships:
+              to: ref('dim_date')
+              field: date_key
+      - name: merchant_id
+        data_tests:
+          - relationships:
+              to: ref('dim_merchant')
+              field: merchant_id
+      - name: card_scheme
+        data_tests:
+          - relationships:
+              to: ref('dim_card_scheme')
+              field: scheme_code
+      - name: currency
+        data_tests:
+          - relationships:
+              to: ref('dim_currency')
+              field: currency_code
+      - name: reconciliation_status
+        data_tests:
+          - relationships:
+              to: ref('dim_reconciliation_status')
+              field: status
+
+  - name: fact_settlements
+    description: One row per settlement record with its reconciliation outcome.
+    columns:
+      - name: settlement_id
+        data_tests: [unique, not_null]
+      - name: date_key
+        data_tests:
+          - relationships:
+              to: ref('dim_date')
+              field: date_key
+      - name: reconciliation_status
+        data_tests:
+          - relationships:
+              to: ref('dim_reconciliation_status')
+              field: status
+
+  - name: agg_daily_volumes
+    description: Daily authorisation volumes by merchant, scheme and currency.
+
+  - name: agg_daily_reconciliation
+    description: Daily reconciliation outcomes by merchant, scheme, currency and status.

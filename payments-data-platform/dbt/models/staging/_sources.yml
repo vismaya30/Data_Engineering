@@ -1,0 +1,10 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: raw
+    tables:
+      - name: merchants
+      - name: transactions
+      - name: settlements
+      - name: reconciliation
